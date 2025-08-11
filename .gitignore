@@ -30,3 +30,4 @@ yolo2/                 # your virtualenv
 
 # Optional: local Darknet checkout
 darknet/
+*.weights
