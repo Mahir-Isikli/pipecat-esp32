@@ -53,6 +53,7 @@ from pipecat.transports.network.small_webrtc import SmallWebRTCTransport
 logger.info("✅ All components loaded successfully!")
 
 from fruit_inventory_tools import tools, register_fruit_functions
+from pipecat.processors.filters.wake_check_filter import WakeCheckFilter
 
 load_dotenv(override=True)
 
@@ -61,6 +62,13 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     logger.info(f"Starting bot")
 
     stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
+
+    # Initialize wake word detection filter (works on transcriptions)
+    wake_filter = WakeCheckFilter(
+        wake_phrases=["Robin"],  # Wake phrases to detect
+        keepalive_timeout=15  # Stay active for 15 seconds after wake word
+    )
+    logger.info("Wake word filter initialized")
 
     tts = CartesiaTTSService(
         api_key=os.getenv("CARTESIA_API_KEY"),
@@ -88,7 +96,8 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         [
             transport.input(),  # Transport user input
             rtvi,  # RTVI processor
-            stt,
+            stt,  # Speech to text
+            wake_filter,  # Wake word filter on transcriptions
             context_aggregator.user(),  # User responses
             llm,  # LLM
             tts,  # TTS
@@ -109,9 +118,8 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
         logger.info(f"Client connected")
-        # Kick off the conversation.
-        messages.append({"role": "system", "content": "Say hello and briefly introduce yourself as the fruit inventory assistant."})
-        await task.queue_frames([context_aggregator.user().get_context_frame()])
+        logger.info("Waiting for wake word 'Hey Chat' to activate...")
+        # Don't automatically start conversation - wait for wake word
 
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):
