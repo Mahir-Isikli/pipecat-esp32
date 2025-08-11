@@ -1,0 +1,110 @@
+{
+  "meta": {
+    "model": "yolov3-416",
+    "input_size": 416,
+    "conf": 0.2,
+    "nms": 0.3,
+    "interval_sec": 5.0,
+    "camera_index": 1
+  },
+  "latest": {
+    "timestamp": "2025-08-11T15:29:14.418582+02:00",
+    "file": "/Users/yangching18/intapp_projects/hackathon/live_photos/live_20250811_152914.jpg",
+    "size": {
+      "width": 1920,
+      "height": 1080
+    },
+    "detections": [
+      {
+        "class": "person",
+        "confidence": 0.9947488307952881,
+        "box": {
+          "x": 15,
+          "y": 0,
+          "w": 977,
+          "h": 1080
+        }
+      },
+      {
+        "class": "bottle",
+        "confidence": 0.8242861032485962,
+        "box": {
+          "x": 1532,
+          "y": 12,
+          "w": 164,
+          "h": 364
+        }
+      },
+      {
+        "class": "cup",
+        "confidence": 0.47717374563217163,
+        "box": {
+          "x": 1453,
+          "y": 15,
+          "w": 105,
+          "h": 80
+        }
+      },
+      {
+        "class": "bowl",
+        "confidence": 0.5815292000770569,
+        "box": {
+          "x": 809,
+          "y": 453,
+          "w": 374,
+          "h": 142
+        }
+      },
+      {
+        "class": "chair",
+        "confidence": 0.5154803991317749,
+        "box": {
+          "x": 0,
+          "y": 395,
+          "w": 431,
+          "h": 652
+        }
+      },
+      {
+        "class": "diningtable",
+        "confidence": 0.9226682186126709,
+        "box": {
+          "x": 678,
+          "y": 72,
+          "w": 1204,
+          "h": 957
+        }
+      },
+      {
+        "class": "laptop",
+        "confidence": 0.9981684684753418,
+        "box": {
+          "x": 776,
+          "y": 2,
+          "w": 554,
+          "h": 293
+        }
+      },
+      {
+        "class": "cell phone",
+        "confidence": 0.9960362315177917,
+        "box": {
+          "x": 774,
+          "y": 346,
+          "w": 254,
+          "h": 104
+        }
+      }
+    ],
+    "counts": {
+      "person": 1,
+      "bottle": 1,
+      "cup": 1,
+      "bowl": 1,
+      "chair": 1,
+      "diningtable": 1,
+      "laptop": 1,
+      "cell phone": 1
+    }
+  }
+}

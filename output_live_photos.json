@@ -1,0 +1,44 @@
+{
+  "meta": {
+    "model": "yolov3-416",
+    "input_size": 416,
+    "conf": 0.2,
+    "nms": 0.3,
+    "interval_sec": 5.0,
+    "camera_index": 0
+  },
+  "latest": {
+    "timestamp": "2025-08-11T14:46:46.653874+02:00",
+    "file": "/Users/yangching18/intapp_projects/hackathon/live_photos/live_20250811_144646.jpg",
+    "size": {
+      "width": 1920,
+      "height": 1080
+    },
+    "detections": [
+      {
+        "class": "person",
+        "confidence": 0.9991390705108643,
+        "box": {
+          "x": 499,
+          "y": 188,
+          "w": 1299,
+          "h": 876
+        }
+      },
+      {
+        "class": "refrigerator",
+        "confidence": 0.661730945110321,
+        "box": {
+          "x": 603,
+          "y": 125,
+          "w": 1253,
+          "h": 883
+        }
+      }
+    ],
+    "counts": {
+      "person": 1,
+      "refrigerator": 1
+    }
+  }
+}

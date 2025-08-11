@@ -1,0 +1,152 @@
+{
+  "meta": {
+    "model": "yolov3-416",
+    "input_size": 416,
+    "conf": 0.2,
+    "nms": 0.3,
+    "images_dir": "/Users/yangching18/intapp_projects/hackathon/photos_jpg",
+    "heic_supported": false
+  },
+  "images": [
+    {
+      "file": "IMG_3877.jpg",
+      "size": {
+        "width": 4284,
+        "height": 5712
+      },
+      "detections": [
+        {
+          "class": "bowl",
+          "confidence": 0.6709074378013611,
+          "box": {
+            "x": 138,
+            "y": 1841,
+            "w": 4069,
+            "h": 3559
+          }
+        },
+        {
+          "class": "orange",
+          "confidence": 0.9611372947692871,
+          "box": {
+            "x": 1764,
+            "y": 899,
+            "w": 971,
+            "h": 1165
+          }
+        },
+        {
+          "class": "orange",
+          "confidence": 0.9601871371269226,
+          "box": {
+            "x": 641,
+            "y": 3339,
+            "w": 937,
+            "h": 1089
+          }
+        },
+        {
+          "class": "orange",
+          "confidence": 0.9493140578269958,
+          "box": {
+            "x": 1640,
+            "y": 3582,
+            "w": 754,
+            "h": 1144
+          }
+        },
+        {
+          "class": "orange",
+          "confidence": 0.9246851205825806,
+          "box": {
+            "x": 2418,
+            "y": 2999,
+            "w": 815,
+            "h": 1180
+          }
+        },
+        {
+          "class": "orange",
+          "confidence": 0.9232040047645569,
+          "box": {
+            "x": 3052,
+            "y": 2387,
+            "w": 888,
+            "h": 1005
+          }
+        },
+        {
+          "class": "orange",
+          "confidence": 0.7827829718589783,
+          "box": {
+            "x": 2240,
+            "y": 1731,
+            "w": 863,
+            "h": 1302
+          }
+        },
+        {
+          "class": "orange",
+          "confidence": 0.748586893081665,
+          "box": {
+            "x": 663,
+            "y": 2381,
+            "w": 841,
+            "h": 1080
+          }
+        },
+        {
+          "class": "orange",
+          "confidence": 0.7317546606063843,
+          "box": {
+            "x": 1247,
+            "y": 1815,
+            "w": 978,
+            "h": 863
+          }
+        },
+        {
+          "class": "orange",
+          "confidence": 0.6812242865562439,
+          "box": {
+            "x": 1590,
+            "y": 2538,
+            "w": 815,
+            "h": 1189
+          }
+        },
+        {
+          "class": "orange",
+          "confidence": 0.45987433195114136,
+          "box": {
+            "x": 2991,
+            "y": 1395,
+            "w": 796,
+            "h": 1015
+          }
+        },
+        {
+          "class": "diningtable",
+          "confidence": 0.2384224385023117,
+          "box": {
+            "x": 56,
+            "y": 205,
+            "w": 4183,
+            "h": 4716
+          }
+        }
+      ],
+      "counts": {
+        "bowl": 1,
+        "orange": 10,
+        "diningtable": 1
+      }
+    }
+  ],
+  "totals": {
+    "bowl": 1,
+    "orange": 10,
+    "diningtable": 1
+  },
+  "num_images": 1
+}

@@ -1,0 +1,32 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+yolo2/                 # your virtualenv
+
+# IDE
+.vscode/
+.idea/
+
+# Outputs & temp
+#live_photos/
+#photos_out/
+#photos/
+#photos_jpg/
+#frame_detect.jpg
+#predictions.jpg
+#output_live_photos.json
+#live_tracking_*.json
+
+# Models / big binaries
+#*.weights
+*.onnx
+*.pth
+
+# Optional: local Darknet checkout
+darknet/
