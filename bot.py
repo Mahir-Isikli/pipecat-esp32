@@ -4,24 +4,18 @@
 # SPDX-License-Identifier: BSD 2-Clause License
 #
 
-"""Pipecat Quickstart Example.
+"""Pipecat Quickstart Example with WS audio input.
 
-The example runs a simple voice AI bot that you can connect to using your
-browser and speak with it.
+- Audio IN: WebSocket (PCM16 LE mono @ 16 kHz) from ESP32
+- Audio OUT: WebRTC (unchanged), rendered to the browser
 
-Required AI services:
-- Deepgram (Speech-to-Text)
-- OpenAI (LLM)
-- Cartesia (Text-to-Speech)
-
-The example connects between client and server using a P2P WebRTC connection.
-
-Run the bot using::
-
+Run:
+    pip install websockets
     python bot.py
 """
 
 import os
+import asyncio
 
 from dotenv import load_dotenv
 from loguru import logger
@@ -54,19 +48,29 @@ logger.info("✅ All components loaded successfully!")
 
 from fruit_inventory_tools import tools, register_fruit_functions
 from pipecat.processors.filters.wake_check_filter import WakeCheckFilter
+from pipecat.frames.frames import StartFrame, InputAudioRawFrame, EndFrame
+
+# NEW: lightweight WS server for audio input
+import websockets
+from websockets.server import WebSocketServerProtocol
+
+# ---- Config for WS audio input ----
+WS_AUDIO_HOST = os.environ.get("WS_AUDIO_HOST", "0.0.0.0")
+WS_AUDIO_PORT = int(os.environ.get("WS_AUDIO_PORT", "8765"))
+INPUT_SAMPLE_RATE = int(os.environ.get("INPUT_SAMPLE_RATE", "16000"))  # ESP32 audio SR
 
 load_dotenv(override=True)
 
 
 async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
-    logger.info(f"Starting bot")
+    logger.info("Starting bot")
 
     stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
 
-    # Initialize wake word detection filter (works on transcriptions)
+    # Wake word filter (acts on transcriptions)
     wake_filter = WakeCheckFilter(
-        wake_phrases=["Robin"],  # Wake phrases to detect
-        keepalive_timeout=15  # Stay active for 15 seconds after wake word
+        wake_phrases=["Robin"],
+        keepalive_timeout=15,
     )
     logger.info("Wake word filter initialized")
 
@@ -77,13 +81,21 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
 
     llm = OpenAILLMService(api_key=os.getenv("OPENAI_API_KEY"), model="gpt-4.1")
 
-    # Register fruit inventory functions
+    # Tools
     register_fruit_functions(llm)
 
     messages = [
         {
             "role": "system",
-            "content": "You are a friendly AI assistant. Respond naturally and keep your answers conversational. Be aware that everything you say is being read out loud. You are a fruit inventory assistant. You can check the fruit inventory by calling the check_fruit_inventory function and update quantities using the update_fruit_inventory function. When users tell you about inventory changes (like 'we have only 2 bananas left' or 'we now have 10 apples'), use the update function to adjust the inventory. Keep your style good for a voice assistant, saying for example, we have three apples, five bananas, and three pears in this kind of order. Answer the questions concisely and don't suggest whether the user needs help with anything else.",
+            "content": (
+                "You are a friendly AI assistant. Respond naturally and keep your answers conversational. "
+                "Be aware that everything you say is being read out loud. You are a fruit inventory assistant. "
+                "You can check the fruit inventory by calling the check_fruit_inventory function and update quantities "
+                "using the update_fruit_inventory function. When users tell you about inventory changes "
+                "(like 'we have only 2 bananas left' or 'we now have 10 apples'), use the update function to adjust the inventory. "
+                "Keep your style good for a voice assistant, saying for example, we have three apples, five bananas, and three pears in this kind of order. "
+                "Answer the questions concisely and don't suggest whether the user needs help with anything else."
+            ),
         },
     ]
 
@@ -92,17 +104,19 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
 
     rtvi = RTVIProcessor(config=RTVIConfig(config=[]))
 
+    # --- PIPELINE ---
+    # IMPORTANT: we remove transport.input() and feed audio via WebSocket handler below.
     pipeline = Pipeline(
         [
-            transport.input(),  # Transport user input
-            rtvi,  # RTVI processor
-            stt,  # Speech to text
-            wake_filter,  # Wake word filter on transcriptions
-            context_aggregator.user(),  # User responses
-            llm,  # LLM
-            tts,  # TTS
-            transport.output(),  # Transport bot output
-            context_aggregator.assistant(),  # Assistant spoken responses
+            # transport.input(),  # <-- REMOVED (we provide frames from WS)
+            rtvi,                           # RTVI processor
+            stt,                            # Speech to text
+            wake_filter,                    # Wake word filter on transcriptions
+            context_aggregator.user(),      # User responses
+            llm,                            # LLM
+            tts,                            # TTS
+            transport.output(),             # Bot audio out (WebRTC)
+            context_aggregator.assistant(), # Assistant spoken responses
         ]
     )
 
@@ -115,28 +129,67 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         observers=[RTVIObserver(rtvi)],
     )
 
+    runner = PipelineRunner(handle_sigint=runner_args.handle_sigint)
+
+    # -------- WebSocket audio handler (PCM16 LE mono @ INPUT_SAMPLE_RATE) --------
+    from pipecat.frames.frames import StartFrame, InputAudioRawFrame, EndFrame
+
+    async def audio_ws_handler(ws):
+        path = getattr(ws, "path", "/")
+        logger.info(f"[WS-Audio] Client connected from {getattr(ws, 'remote_address', None)}, path={path}")
+
+        # 1) Старт потока: ОДИН раз на подключение
+        await task.queue_frame(
+            StartFrame(
+                audio_in_sample_rate=INPUT_SAMPLE_RATE,
+                audio_out_sample_rate=INPUT_SAMPLE_RATE,
+            )
+        )
+
+        try:
+            async for data in ws:  # ждём bytes: int16 LE mono @ INPUT_SAMPLE_RATE
+                if isinstance(data, (bytes, bytearray)) and data:
+                    # 2) Аудио-чанки
+                    await task.queue_frame(
+                        InputAudioRawFrame(audio=bytes(data), sample_rate=INPUT_SAMPLE_RATE, num_channels=1)
+                    )
+        except (websockets.ConnectionClosedOK, websockets.ConnectionClosedError) as e:
+            logger.info(f"[WS-Audio] Closed: {e}")
+        finally:
+            # 3) Конец потока
+            await task.queue_frame(EndFrame())
+            logger.info("[WS-Audio] Stream ended")
+
+    # Start WS server (runs alongside the pipeline runner)
+    ws_server = await websockets.serve(audio_ws_handler, "0.0.0.0", 8765, max_size=None, compression=None,
+        origins=None)
+    logger.info(f"[WS-Audio] Listening on ws://{WS_AUDIO_HOST}:{WS_AUDIO_PORT}")
+
+    # ---- Optional: transport events (unchanged) ----
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
-        logger.info(f"Client connected")
+        logger.info("WebRTC client connected")
         logger.info("Waiting for wake word 'Hey Chat' to activate...")
-        # Don't automatically start conversation - wait for wake word
 
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):
-        logger.info(f"Client disconnected")
+        logger.info("WebRTC client disconnected")
         await task.cancel()
 
-    runner = PipelineRunner(handle_sigint=runner_args.handle_sigint)
-
+    # Run pipeline task (blocks until completion). WS server lives in the same loop.
     await runner.run(task)
+
+    # Cleanup (if we ever exit runner)
+    ws_server.close()
+    await ws_server.wait_closed()
 
 
 async def bot(runner_args: RunnerArguments):
     """Main bot entry point for the bot starter."""
-
+    # Keep WebRTC transport for OUTPUT only. Disable audio_in to avoid mic/browser input.
     transport = SmallWebRTCTransport(
         params=TransportParams(
-            audio_in_enabled=True,
+            audio_in_enabled=False,  # <--- was True; we now feed audio from WS
             audio_out_enabled=True,
             vad_analyzer=SileroVADAnalyzer(),
         ),
@@ -148,5 +201,4 @@ async def bot(runner_args: RunnerArguments):
 
 if __name__ == "__main__":
     from pipecat.runner.run import main
-
     main()
