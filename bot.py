@@ -44,9 +44,6 @@ from pipecat.services.cartesia.tts import CartesiaTTSService
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
-from pipecat.adapters.schemas.function_schema import FunctionSchema
-from pipecat.adapters.schemas.tools_schema import ToolsSchema
-from pipecat.services.llm_service import FunctionCallParams
 
 logger.info("✅ Pipeline components loaded")
 
@@ -54,6 +51,8 @@ logger.info("Loading WebRTC transport...")
 from pipecat.transports.network.small_webrtc import SmallWebRTCTransport
 
 logger.info("✅ All components loaded successfully!")
+
+from fruit_inventory_tools import tools, register_fruit_functions
 
 load_dotenv(override=True)
 
@@ -70,50 +69,13 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
 
     llm = OpenAILLMService(api_key=os.getenv("OPENAI_API_KEY"), model="gpt-4.1")
 
-    # Define fruit inventory data
-    fruit_inventory = {
-        "apples": 15,
-        "bananas": 8,
-        "pears": 12
-    }
-
-    # Define the fruit inventory function schema
-    fruit_inventory_schema = FunctionSchema(
-        name="check_fruit_inventory",
-        description="Check the current inventory of fruits in stock",
-        properties={
-            "fruit_type": {
-                "type": "string",
-                "enum": ["apples", "bananas", "pears", "all"],
-                "description": "Type of fruit to check or 'all' for entire inventory"
-            }
-        },
-        required=["fruit_type"]
-    )
-
-    # Create tools schema
-    tools = ToolsSchema(standard_tools=[fruit_inventory_schema])
-
-    # Function handler with correct signature
-    async def handle_fruit_inventory(params: FunctionCallParams):
-        fruit_type = params.arguments.get("fruit_type")
-        
-        if fruit_type == "all":
-            result = fruit_inventory
-        elif fruit_type in fruit_inventory:
-            result = {fruit_type: fruit_inventory[fruit_type]}
-        else:
-            result = {"error": f"Unknown fruit type: {fruit_type}"}
-        
-        await params.result_callback(result)
-
-    # Register the function handler
-    llm.register_function("check_fruit_inventory", handle_fruit_inventory)
+    # Register fruit inventory functions
+    register_fruit_functions(llm)
 
     messages = [
         {
             "role": "system",
-            "content": "You are a friendly AI assistant. Respond naturally and keep your answers conversational. Be aware that everything you say is being read out loud.",
+            "content": "You are a friendly AI assistant. Respond naturally and keep your answers conversational. Be aware that everything you say is being read out loud. You are a fruit inventory assistant. You can check the fruit inventory by calling the check_fruit_inventory function and update quantities using the update_fruit_inventory function. When users tell you about inventory changes (like 'we have only 2 bananas left' or 'we now have 10 apples'), use the update function to adjust the inventory. Keep your style good for a voice assistant, saying for example, we have three apples, five bananas, and three pears in this kind of order. Answer the questions concisely and don't suggest whether the user needs help with anything else.",
         },
     ]
 
@@ -148,7 +110,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     async def on_client_connected(transport, client):
         logger.info(f"Client connected")
         # Kick off the conversation.
-        messages.append({"role": "system", "content": "Say hello and briefly introduce yourself."})
+        messages.append({"role": "system", "content": "Say hello and briefly introduce yourself as the fruit inventory assistant."})
         await task.queue_frames([context_aggregator.user().get_context_frame()])
 
     @transport.event_handler("on_client_disconnected")
