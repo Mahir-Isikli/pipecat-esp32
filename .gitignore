@@ -31,3 +31,4 @@ yolo2/                 # your virtualenv
 # Optional: local Darknet checkout
 darknet/
 *.weights
+yolo4.conv.137
