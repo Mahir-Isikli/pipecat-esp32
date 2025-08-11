@@ -56,7 +56,7 @@ from websockets.server import WebSocketServerProtocol
 
 # ---- Config for WS audio input ----
 WS_AUDIO_HOST = os.environ.get("WS_AUDIO_HOST", "0.0.0.0")
-WS_AUDIO_PORT = int(os.environ.get("WS_AUDIO_PORT", "8765"))
+WS_AUDIO_PORT = int(os.environ.get("WS_AUDIO_PORT", 8765))
 INPUT_SAMPLE_RATE = int(os.environ.get("INPUT_SAMPLE_RATE", "16000"))  # ESP32 audio SR
 
 load_dotenv(override=True)
@@ -161,13 +161,18 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
             logger.info("[WS-Audio] Stream ended")
 
     # Start WS server (runs alongside the pipeline runner)
-    ws_server = await websockets.serve(audio_ws_handler, "0.0.0.0", 8765, max_size=None, compression=None,
+    ws_server = await websockets.serve(audio_ws_handler, WS_AUDIO_HOST, WS_AUDIO_PORT, max_size=None, compression=None,
         origins=None)
     logger.info(f"[WS-Audio] Listening on ws://{WS_AUDIO_HOST}:{WS_AUDIO_PORT}")
 
     # ---- Optional: transport events (unchanged) ----
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
+        # Kick the pipeline so Agent leaves CONNECTING even before ESP WS connects
+        await task.queue_frame(StartFrame(
+            audio_in_sample_rate=INPUT_SAMPLE_RATE,
+            audio_out_sample_rate=INPUT_SAMPLE_RATE,
+        ))
         logger.info("WebRTC client connected")
         logger.info("Waiting for wake word 'Hey Chat' to activate...")
 
